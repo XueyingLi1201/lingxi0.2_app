@@ -7,7 +7,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  FLUTTER_VERSION: '3.24.5'   # 固定版本，避免解析问题
+  FLUTTER_VERSION: '3.24.5'
 
 jobs:
   build:
@@ -38,7 +38,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'        # 明确指定 stable 渠道
+          channel: 'stable'
           cache: true
 
       - name: Check Flutter
@@ -60,7 +60,7 @@ jobs:
 
       - name: Build APK
         run: |
-          yes | flet build apk lingxi_app.py --verbose
+          flet build apk --verbose
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
