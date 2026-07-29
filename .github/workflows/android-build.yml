@@ -7,7 +7,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  FLUTTER_VERSION: 'stable'   # 改成 stable
+  FLUTTER_VERSION: '3.24.5'   # 固定版本，避免解析问题
 
 jobs:
   build:
@@ -38,6 +38,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'        # 明确指定 stable 渠道
           cache: true
 
       - name: Check Flutter
@@ -57,7 +58,6 @@ jobs:
           TTS_API_KEY = "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}"
           EOF
 
-      # 🔥 关键修改：使用 yes | 自动确认所有提示
       - name: Build APK
         run: |
           yes | flet build apk lingxi_app.py --verbose
