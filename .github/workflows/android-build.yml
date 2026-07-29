@@ -7,7 +7,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  FLUTTER_VERSION: '3.22.0'
+  FLUTTER_VERSION: 'stable'   # 改成 stable
 
 jobs:
   build:
@@ -57,9 +57,10 @@ jobs:
           TTS_API_KEY = "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}"
           EOF
 
+      # 🔥 关键修改：使用 yes | 自动确认所有提示
       - name: Build APK
         run: |
-          flet build apk lingxi_app.py --verbose
+          yes | flet build apk lingxi_app.py --verbose
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
