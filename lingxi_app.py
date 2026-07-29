@@ -48,7 +48,7 @@ TTS_SPEAKER = "S_zre21nZ82"
 TTS_RESOURCE = "seed-icl-2.0"
 TTS_URL = "https://openspeech.bytedance.com/api/v1/tts"
 
-def tts_speak(text: str):
+def tts_speak(text: str) -> str | None:
     clean_text = re.sub(r'（[^）]*）', '', text)
     clean_text = re.sub(r'\([^)]*\)', '', clean_text).strip()
     if not clean_text:
