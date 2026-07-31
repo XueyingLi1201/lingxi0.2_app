@@ -36,7 +36,7 @@ jobs:
           pip list
 
       - name: Check flet version
-        run: python -c "import flet; print(f'flet version: {flet.__version__}')"
+        run: python -c "import flet; print('flet version: ' + flet.__version__)"
 
       - name: Set up Flutter (3.44.8)
         uses: subosito/flutter-action@v2
