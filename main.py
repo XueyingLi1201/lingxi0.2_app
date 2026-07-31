@@ -1,5 +1,4 @@
 import flet as ft
-from flet import Audio  # 🔥 显式导入 Audio
 import re
 import asyncio
 import os
@@ -102,8 +101,8 @@ def main(page: ft.Page):
     page.window_height = 750
     page.bgcolor = "#f0f4f8"
 
-    # 🔥 使用显式导入的 Audio
-    audio_player = Audio(src="")
+    # 使用 ft.Audio（避免直接导入 Audio）
+    audio_player = ft.Audio(src="")
     page.overlay.append(audio_player)
 
     app_bar = ft.Container(
