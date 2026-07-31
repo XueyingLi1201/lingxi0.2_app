@@ -15,59 +15,59 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip cache purge || true
-          if [ -f "requirements.txt" ]; then
-            pip install -r requirements.txt
-          else
-            pip install flet
-          fi
-          pip list
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip cache purge || true
+        if [ -f "requirements.txt" ]; then
+          pip install -r requirements.txt
+        else
+          pip install flet
+        fi
+        pip list
 
-      - name: Check flet version
-        run: python -c "import flet; print('flet version: ' + flet.__version__)"
+    - name: Check flet version
+      run: python -c "import flet; print('flet version: ' + flet.__version__)"
 
-      - name: Set up Flutter (3.44.8)
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-          cache: true
+    - name: Set up Flutter (3.44.8)
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+        cache: true
 
-      - name: Check Flutter
-        run: flutter doctor -v
+    - name: Check Flutter
+      run: flutter doctor -v
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
 
-      - name: Inject API Keys
-        run: |
-          cat > config.py <<EOF
-          # 由 GitHub Actions 自动生成
-          DEEPSEEK_API_KEY = "${{ secrets.DEEPSEEK_API_KEY }}"
-          TTS_API_KEY = "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}"
-          EOF
+    - name: Inject API Keys
+      run: |
+        cat > config.py <<EOF
+        # 由 GitHub Actions 自动生成
+        DEEPSEEK_API_KEY = "${{ secrets.DEEPSEEK_API_KEY }}"
+        TTS_API_KEY = "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}"
+        EOF
 
-      - name: Build APK
-        run: |
-          yes | flet build apk --verbose --android-skip-build-dependency-validation
+    - name: Build APK
+      run: |
+        yes | flet build apk --verbose --android-skip-build-dependency-validation
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Lingxi-App
-          path: build/apk
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Lingxi-App
+        path: build/apk
