@@ -1,0 +1,60 @@
+name: Auto Fix YAML
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate correct workflow
+        run: |
+          cat > .github/workflows/real-build.yml << 'YAML'
+          name: Build Flet Android APK
+          on:
+            push:
+              branches: [ main, master ]
+            workflow_dispatch:
+          env:
+            PYTHON_VERSION: '3.11'
+            FLUTTER_VERSION: '3.44.8'
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              timeout-minutes: 120
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-python@v5
+                  with:
+                    python-version: \${{ env.PYTHON_VERSION }}
+                    cache: 'pip'
+                - name: Install deps
+                  run: python -m pip install --upgrade pip && pip cache purge || true && if [ -f "requirements.txt" ]; then pip install -r requirements.txt; else pip install flet; fi && pip list
+                - uses: subosito/flutter-action@v2
+                  with:
+                    flutter-version: \${{ env.FLUTTER_VERSION }}
+                    channel: 'stable'
+                    cache: true
+                - run: flutter doctor -v
+                - uses: actions/setup-java@v4
+                  with:
+                    distribution: 'zulu'
+                    java-version: '17'
+                - name: Inject keys
+                  run: printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "\${{ secrets.DEEPSEEK_API_KEY }}" "\${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
+                - run: yes | flet build apk --verbose --android-skip-build-dependency-validation
+                - uses: actions/upload-artifact@v4
+                  with:
+                    name: Lingxi-App
+                    path: build/apk
+          YAML
+      - name: Commit and push
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .github/workflows/real-build.yml
+          git commit -m "Add correct workflow" || echo "No changes"
+          git push
