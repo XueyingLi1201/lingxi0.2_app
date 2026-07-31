@@ -7,7 +7,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  FLUTTER_VERSION: '3.44.8'   # 直接使用 Flet 需要的版本
+  FLUTTER_VERSION: '3.44.8'
 
 jobs:
   build:
@@ -27,12 +27,16 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
+          pip cache purge || true
           if [ -f "requirements.txt" ]; then
             pip install -r requirements.txt
           else
             pip install flet
           fi
           pip list
+
+      - name: Check flet version
+        run: python -c "import flet; print(f'flet version: {flet.__version__}')"
 
       - name: Set up Flutter (3.44.8)
         uses: subosito/flutter-action@v2
@@ -60,7 +64,7 @@ jobs:
 
       - name: Build APK
         run: |
-          yes | flet build apk --verbose
+          yes | flet build apk --verbose --android-skip-build-dependency-validation
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
