@@ -22,7 +22,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'   # 更稳定的版本
+          flutter-version: '3.22.0'
           channel: 'stable'
           cache: true
       - name: Set up Java
@@ -33,10 +33,15 @@ jobs:
       - name: Inject API Keys
         run: |
           printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "${{ secrets.DEEPSEEK_API_KEY }}" "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
-      - name: Build APK (skip dependency validation)
-        run: flet build apk --verbose --android-skip-build-dependency-validation
+      - name: Generate Flutter project (ignore failure)
+        run: |
+          flet build apk --verbose || true
+      - name: Build APK with Flutter (skip AGP check)
+        run: |
+          cd build/flutter
+          flutter build apk --android-skip-build-dependency-validation --verbose
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Lingxi-App
-          path: build/apk
+          path: build/flutter/build/app/outputs/flutter-apk/app-release.apk
