@@ -35,19 +35,14 @@ jobs:
           java-version: '17'
       - name: Inject API Keys
         run: printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "${{ secrets.DEEPSEEK_API_KEY }}" "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
-      # 关键步骤：生成项目并修改gradle
+      # 生成并升级Gradle
       - name: Generate and upgrade Gradle
         run: |
-          # 先生成项目（即使失败也无妨）
           flet build apk --verbose || true
-          # 找到生成的android目录
           ANDROID_DIR="build/flutter/android"
           if [ -d "$ANDROID_DIR" ]; then
-            # 修改gradle-wrapper.properties，升级Gradle版本
             echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip" > $ANDROID_DIR/gradle/wrapper/gradle-wrapper.properties
-            # 修改build.gradle，升级AGP版本
             sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.7.0/g' $ANDROID_DIR/build.gradle
-            # 修改app/build.gradle，确保使用正确SDK版本
             sed -i 's/minSdkVersion .*/minSdkVersion 21/g' $ANDROID_DIR/app/build.gradle
             sed -i 's/targetSdkVersion .*/targetSdkVersion 34/g' $ANDROID_DIR/app/build.gradle
           else
@@ -55,11 +50,17 @@ jobs:
           fi
       - name: Build APK
         run: |
-          # 使用flutter直接构建
           cd build/flutter
           flutter build apk --verbose
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+      - name: Find and Upload APK
+        run: |
+          APK_PATH=$(find . -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::No APK file found!"
+            exit 1
+          fi
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
         with:
           name: Lingxi-App
-          path: build/flutter/build/app/outputs/flutter-apk/app-release.apk
+          path: ${{ env.APK_PATH }}
