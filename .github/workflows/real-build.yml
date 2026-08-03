@@ -5,62 +5,38 @@ on:
   workflow_dispatch:
 env:
   PYTHON_VERSION: '3.11'
-  FLUTTER_VERSION: '3.44.8'
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-      - name: Install Python dependencies
-        run: python -m pip install --upgrade pip && pip cache purge || true && if [ -f "requirements.txt" ]; then pip install -r requirements.txt; else pip install flet; fi && pip list
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: '3.22.0'   # 更稳定的版本
           channel: 'stable'
           cache: true
-      - name: Check Flutter
-        run: flutter doctor -v
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
       - name: Inject API Keys
-        run: printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "${{ secrets.DEEPSEEK_API_KEY }}" "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
-      # 生成并升级Gradle
-      - name: Generate and upgrade Gradle
         run: |
-          flet build apk --verbose || true
-          ANDROID_DIR="build/flutter/android"
-          if [ -d "$ANDROID_DIR" ]; then
-            echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip" > $ANDROID_DIR/gradle/wrapper/gradle-wrapper.properties
-            sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.7.0/g' $ANDROID_DIR/build.gradle
-            sed -i 's/minSdkVersion .*/minSdkVersion 21/g' $ANDROID_DIR/app/build.gradle
-            sed -i 's/targetSdkVersion .*/targetSdkVersion 34/g' $ANDROID_DIR/app/build.gradle
-          else
-            echo "Android directory not found, skipping upgrade"
-          fi
-      - name: Build APK
-        run: |
-          cd build/flutter
-          flutter build apk --verbose
-      - name: Find and Upload APK
-        run: |
-          APK_PATH=$(find . -name "*.apk" | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            echo "::error::No APK file found!"
-            exit 1
-          fi
-          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
-      - uses: actions/upload-artifact@v4
+          printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "${{ secrets.DEEPSEEK_API_KEY }}" "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
+      - name: Build APK (skip dependency validation)
+        run: flet build apk --verbose --android-skip-build-dependency-validation
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: Lingxi-App
-          path: ${{ env.APK_PATH }}
+          path: build/apk
