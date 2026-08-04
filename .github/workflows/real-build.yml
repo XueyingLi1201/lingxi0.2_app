@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 env:
   PYTHON_VERSION: '3.11'
+  FLUTTER_VERSION: '3.22.0'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,14 +16,15 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install flet==0.25.1
+          pip install -r requirements.txt || true
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
       - name: Set up Java
@@ -33,10 +35,22 @@ jobs:
       - name: Inject API Keys
         run: |
           printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "${{ secrets.DEEPSEEK_API_KEY }}" "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
-      - name: Generate Flutter project (ignore failure)
+      - name: Generate Flutter project (ignore error)
         run: |
           flet build apk --verbose || true
-      - name: Build APK with Flutter (skip AGP check)
+      - name: Upgrade project and fix Gradle
+        run: |
+          cd build/flutter
+          # 升级所有依赖
+          flutter pub upgrade
+          # 修改 android/build.gradle
+          cd android
+          # 设置 Kotlin 版本和 AGP 版本为与升级后插件兼容的版本
+          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.24"/' build.gradle
+          sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.2.0/' build.gradle
+          # 返回项目根
+          cd ../..
+      - name: Build APK
         run: |
           cd build/flutter
           flutter build apk --android-skip-build-dependency-validation --verbose
