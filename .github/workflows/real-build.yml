@@ -35,22 +35,20 @@ jobs:
       - name: Inject API Keys
         run: |
           printf 'DEEPSEEK_API_KEY = "%s"\nTTS_API_KEY = "%s"\n' "${{ secrets.DEEPSEEK_API_KEY }}" "${{ secrets.TTS_API_KEY || 'e9690219-6f03-4a0f-906b-f29ce8bd3c45' }}" > config.py
-      - name: Generate Flutter project (ignore error)
+      - name: Generate Flutter project
         run: |
           flet build apk --verbose || true
-      - name: Upgrade project and fix Gradle
+      - name: Upgrade dependencies and fix build.gradle
         run: |
           cd build/flutter
-          # 升级所有依赖
+          # 强制升级所有依赖，包括 serious_python_android
           flutter pub upgrade
-          # 修改 android/build.gradle
+          # 修改 build.gradle 让 AGP 和 Kotlin 版本匹配升级后的插件
           cd android
-          # 设置 Kotlin 版本和 AGP 版本为与升级后插件兼容的版本
           sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.24"/' build.gradle
           sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.2.0/' build.gradle
-          # 返回项目根
           cd ../..
-      - name: Build APK
+      - name: Build APK with Flutter
         run: |
           cd build/flutter
           flutter build apk --android-skip-build-dependency-validation --verbose
