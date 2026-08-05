@@ -84,9 +84,14 @@ def tts_speak(text: str) -> str | None:
     try:
         response = requests.post(TTS_URL, headers=headers, json=data, timeout=30)
         if response.status_code == 200:
-            return response.json().get("data")
+            audio_data = response.json().get("data")
+            if audio_data:
+                return audio_data
+            else:
+                print("TTS 返回数据为空")
+                return None
         else:
-            print(f"TTS 失败：{response.status_code}")
+            print(f"TTS 失败，状态码：{response.status_code}")
             return None
     except Exception as e:
         print(f"TTS 异常：{e}")
@@ -97,14 +102,16 @@ def main(page: ft.Page):
     page.title = "灵溪"
     page.theme_mode = "light"
     page.padding = 10
-    page.window_width = 420
-    page.window_height = 750
+    # 自适应窗口尺寸
+    page.window_width = None
+    page.window_height = None
     page.bgcolor = "#f0f4f8"
 
-    # 使用 ft.Audio（避免直接导入 Audio）
+    # 音频播放组件
     audio_player = ft.Audio(src="")
     page.overlay.append(audio_player)
 
+    # 顶部导航栏
     app_bar = ft.Container(
         content=ft.Row(
             controls=[
@@ -119,6 +126,7 @@ def main(page: ft.Page):
         bgcolor="#4a90d9",
     )
 
+    # 聊天显示区域
     chat_display = ft.Column(
         spacing=15,
         scroll=ft.ScrollMode.AUTO,
@@ -130,6 +138,7 @@ def main(page: ft.Page):
         expand=True,
     )
 
+    # 输入框和发送按钮
     input_field = ft.TextField(
         hint_text="说点什么...",
         expand=True,
@@ -149,6 +158,7 @@ def main(page: ft.Page):
 
     def play_audio(base64_audio: str):
         if not base64_audio:
+            print("没有音频数据，跳过播放")
             return
         try:
             audio_bytes = base64.b64decode(base64_audio)
@@ -175,8 +185,10 @@ def main(page: ft.Page):
         input_field.value = ""
         page.update()
 
-        win_w = page.window_width or 400
+        # 获取屏幕宽度（自适应）
+        win_w = page.width or page.window_width or 400
 
+        # 用户消息
         chat_display.controls.append(
             ft.Row(
                 controls=[
@@ -193,6 +205,7 @@ def main(page: ft.Page):
         )
         page.update()
 
+        # “正在输入……”
         typing = ft.Row(
             controls=[
                 ft.Container(
@@ -205,10 +218,13 @@ def main(page: ft.Page):
         chat_display.controls.append(typing)
         page.update()
 
+        # 获取 AI 回复
         reply = get_reply(user_text)
 
+        # 移除“正在输入……”
         chat_display.controls.remove(typing)
 
+        # AI 回复
         chat_display.controls.append(
             ft.Row(
                 controls=[
@@ -231,6 +247,7 @@ def main(page: ft.Page):
         )
         page.update()
 
+        # 语音合成（非阻塞，失败不影响对话）
         try:
             audio_base64 = tts_speak(reply)
             if audio_base64:
@@ -238,6 +255,7 @@ def main(page: ft.Page):
         except Exception as e:
             print(f"语音处理失败：{e}")
 
+    # 底部输入栏
     input_row = ft.Container(
         content=ft.Row(
             controls=[input_field, send_btn],
