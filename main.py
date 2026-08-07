@@ -7,7 +7,7 @@ import base64
 import tempfile
 from openai import OpenAI
 
-# ---------- 导入配置（由 GitHub Actions 动态生成） ----------
+# ---------- 导入配置 ----------
 try:
     from config import DEEPSEEK_API_KEY, TTS_API_KEY
 except ImportError:
@@ -48,11 +48,12 @@ TTS_SPEAKER = "S_zre21nZ82"
 TTS_RESOURCE = "seed-icl-2.0"
 TTS_URL = "https://openspeech.bytedance.com/api/v1/tts"
 
-def tts_speak(text: str) -> str | None:
+def tts_speak(text: str):
+    """返回 (音频数据base64, 错误信息)"""
     clean_text = re.sub(r'（[^）]*）', '', text)
     clean_text = re.sub(r'\([^)]*\)', '', clean_text).strip()
     if not clean_text:
-        return None
+        return None, "文本为空，无法合成语音"
 
     headers = {
         "X-Api-Key": TTS_API_KEY,
@@ -86,79 +87,38 @@ def tts_speak(text: str) -> str | None:
         if response.status_code == 200:
             audio_data = response.json().get("data")
             if audio_data:
-                return audio_data
+                return audio_data, None
             else:
-                print("TTS 返回数据为空")
-                return None
+                return None, "TTS 返回数据为空（可能 Key 无效或配额用尽）"
         else:
-            print(f"TTS 失败，状态码：{response.status_code}")
-            return None
+            return None, f"TTS 请求失败，状态码：{response.status_code}"
     except Exception as e:
-        print(f"TTS 异常：{e}")
-        return None
+        return None, f"TTS 异常：{str(e)}"
 
 # ---------- Flet UI ----------
 def main(page: ft.Page):
     page.title = "灵溪"
     page.theme_mode = "light"
     page.padding = 10
-    # 自适应窗口尺寸
     page.window_width = None
     page.window_height = None
     page.bgcolor = "#f0f4f8"
 
-    # 音频播放组件
     audio_player = ft.Audio(src="")
     page.overlay.append(audio_player)
 
-    # 顶部导航栏
-    app_bar = ft.Container(
-        content=ft.Row(
-            controls=[
-                ft.Text("💬", size=30),
-                ft.Text("灵溪", size=24, weight="bold", color="white"),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-            spacing=10,
-        ),
-        padding=15,
-        margin=0,
-        bgcolor="#4a90d9",
-    )
-
-    # 聊天显示区域
-    chat_display = ft.Column(
-        spacing=15,
-        scroll=ft.ScrollMode.AUTO,
-        expand=True,
-    )
-    chat_wrapper = ft.Container(
-        content=chat_display,
-        padding=10,
-        expand=True,
-    )
-
-    # 输入框和发送按钮
-    input_field = ft.TextField(
-        hint_text="说点什么...",
-        expand=True,
-        border_radius=30,
-        filled=True,
-        bgcolor="white",
-        border_color="#4a90d9",
-        on_submit=lambda e: send_message(),
-    )
-    send_btn = ft.Container(
-        content=ft.Text("发送", color="white", size=14, weight="bold"),
-        bgcolor="#4a90d9",
-        padding=16,
-        border_radius=20,
-        on_click=lambda e: send_message(),
-    )
+    def show_snackbar(message: str):
+        page.snack_bar = ft.SnackBar(
+            content=ft.Text(message, color="white"),
+            bgcolor="#d32f2f",
+            duration=3000,
+        )
+        page.snack_bar.open = True
+        page.update()
 
     def play_audio(base64_audio: str):
         if not base64_audio:
-            print("没有音频数据，跳过播放")
+            show_snackbar("没有音频数据，请检查 TTS 配置")
             return
         try:
             audio_bytes = base64.b64decode(base64_audio)
@@ -175,8 +135,77 @@ def main(page: ft.Page):
                     pass
             asyncio.create_task(delete_later())
         except Exception as e:
-            print(f"播放异常：{e}")
+            show_snackbar(f"播放异常：{str(e)[:50]}")
 
+    # ---------- 顶部导航栏 ----------
+    app_bar = ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Text("💬", size=30),
+                ft.Text("灵溪", size=24, weight="bold", color="white"),
+            ],
+            alignment=ft.MainAxisAlignment.START,
+            spacing=10,
+        ),
+        padding=15,
+        margin=0,
+        bgcolor="#4a90d9",
+    )
+
+    # ---------- 聊天显示区域 ----------
+    chat_display = ft.Column(
+        spacing=15,
+        scroll=ft.ScrollMode.AUTO,
+        expand=True,
+    )
+    chat_wrapper = ft.Container(
+        content=chat_display,
+        padding=10,
+        expand=True,
+    )
+
+    # ---------- 输入框 ----------
+    input_field = ft.TextField(
+        hint_text="说点什么...",
+        expand=True,
+        border_radius=30,
+        filled=True,
+        bgcolor="white",
+        border_color="#4a90d9",
+        on_submit=lambda e: send_message(),
+    )
+
+    # ---------- 发送按钮 ----------
+    send_btn = ft.Container(
+        content=ft.Text("发送", color="white", size=14, weight="bold"),
+        bgcolor="#4a90d9",
+        padding=16,
+        border_radius=20,
+        on_click=lambda e: send_message(),
+    )
+
+    # ---------- 语音测试按钮 ----------
+    def test_tts():
+        test_text = "语音测试，如果你听到这句话，说明 TTS 可以正常使用。"
+        audio_data, error = tts_speak(test_text)
+        if error:
+            show_snackbar(f"语音测试失败：{error[:30]}...")
+            return
+        if audio_data:
+            play_audio(audio_data)
+            show_snackbar("✅ 语音测试成功！")
+        else:
+            show_snackbar("❌ 语音测试失败，未收到音频数据")
+
+    test_btn = ft.Container(
+        content=ft.Text("🔊", size=24, color="white"),
+        bgcolor="#4CAF50",
+        padding=16,
+        border_radius=20,
+        on_click=lambda e: test_tts(),
+    )
+
+    # ---------- 发送消息核心函数 ----------
     def send_message():
         user_text = input_field.value
         if not user_text:
@@ -185,7 +214,6 @@ def main(page: ft.Page):
         input_field.value = ""
         page.update()
 
-        # 获取屏幕宽度（自适应）
         win_w = page.width or page.window_width or 400
 
         # 用户消息
@@ -218,10 +246,8 @@ def main(page: ft.Page):
         chat_display.controls.append(typing)
         page.update()
 
-        # 获取 AI 回复
         reply = get_reply(user_text)
 
-        # 移除“正在输入……”
         chat_display.controls.remove(typing)
 
         # AI 回复
@@ -247,18 +273,20 @@ def main(page: ft.Page):
         )
         page.update()
 
-        # 语音合成（非阻塞，失败不影响对话）
+        # 自动语音合成（失败时显示 SnackBar）
         try:
-            audio_base64 = tts_speak(reply)
-            if audio_base64:
-                play_audio(audio_base64)
+            audio_data, error = tts_speak(reply)
+            if error:
+                show_snackbar(f"语音合成失败：{error[:30]}...")
+            elif audio_data:
+                play_audio(audio_data)
         except Exception as e:
-            print(f"语音处理失败：{e}")
+            show_snackbar(f"语音处理异常：{str(e)[:30]}...")
 
-    # 底部输入栏
+    # ---------- 底部输入栏 ----------
     input_row = ft.Container(
         content=ft.Row(
-            controls=[input_field, send_btn],
+            controls=[input_field, test_btn, send_btn],
             spacing=10,
             alignment=ft.MainAxisAlignment.CENTER,
         ),
@@ -266,6 +294,7 @@ def main(page: ft.Page):
         bgcolor="#f0f4f8",
     )
 
+    # ---------- 添加组件到页面 ----------
     page.add(app_bar, chat_wrapper, input_row)
 
 if __name__ == "__main__":
