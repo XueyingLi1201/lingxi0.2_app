@@ -1,4 +1,4 @@
-flet
+flet==0.25.0
 requests
 openai
-websockets
+websockets==13.0
