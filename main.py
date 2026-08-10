@@ -9,11 +9,8 @@ import tempfile
 import websockets
 from openai import OpenAI
 
-# ---------- 导入配置 ----------
+# ---------- 配置 ----------
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-if not DEEPSEEK_API_KEY:
-    print("⚠️ 请设置 DEEPSEEK_API_KEY 环境变量")
-
 TTS_API_KEY = os.getenv("TTS_API_KEY", "e9690219-6f03-4a0f-906b-f29ce8bd3c45")
 TTS_WS_URL = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
@@ -127,29 +124,32 @@ async def tts_websocket(text: str):
 
 # ---------- Flet UI ----------
 def main(page: ft.Page):
+    # ---------- 页面设置 ----------
     page.title = "灵溪"
     page.theme_mode = "light"
     page.padding = 10
     page.window_width = None
     page.window_height = None
     page.bgcolor = "#f0f4f8"
+    page.theme = ft.Theme(color_scheme_seed="#4a90d9")
 
+    # ---------- 音频播放 ----------
     audio_player = ft.Audio(src="")
     page.overlay.append(audio_player)
 
-    # 修改 SnackBar 颜色：错误用深灰，成功用绿色
-    def show_snackbar(message: str, is_success=False):
+    # ---------- 消息提示（完全无红色） ----------
+    def show_message(msg: str):
         page.snack_bar = ft.SnackBar(
-            content=ft.Text(message, color="white"),
-            bgcolor="#4CAF50" if is_success else "#333333",
+            content=ft.Text(msg, color="white"),
+            bgcolor="#4CAF50",  # 统一为绿色
             duration=3000,
         )
         page.snack_bar.open = True
         page.update()
 
+    # ---------- 播放 PCM 音频 ----------
     def play_pcm_as_wav(pcm_data: bytes):
         if not pcm_data:
-            show_snackbar("没有音频数据")
             return
         try:
             import wave
@@ -169,18 +169,14 @@ def main(page: ft.Page):
                         pass
                 asyncio.create_task(delete_later())
         except Exception as e:
-            show_snackbar(f"播放异常：{str(e)[:50]}")
+            print(f"播放异常：{e}")
 
     async def do_tts(text: str):
         pcm_data, error = await tts_websocket(text)
         if error:
-            show_snackbar(f"语音合成失败：{error[:50]}...")
+            print(f"语音合成失败：{error}")
         else:
             play_pcm_as_wav(pcm_data)
-            show_snackbar("✅ 语音已播放", True)
-
-    def test_tts():
-        asyncio.create_task(do_tts("语音测试，如果你听到这句话，说明 TTS 可以正常使用。"))
 
     # ---------- UI 组件 ----------
     app_bar = ft.Container(
@@ -198,7 +194,12 @@ def main(page: ft.Page):
     )
 
     chat_display = ft.Column(spacing=15, scroll=ft.ScrollMode.AUTO, expand=True)
-    chat_wrapper = ft.Container(content=chat_display, padding=10, expand=True)
+    chat_wrapper = ft.Container(
+        content=chat_display,
+        padding=10,
+        expand=True,
+        bgcolor="#f0f4f8",  # 与页面背景一致，彻底消除红色
+    )
 
     input_field = ft.TextField(
         hint_text="说点什么...",
@@ -218,14 +219,6 @@ def main(page: ft.Page):
         on_click=lambda e: send_message(),
     )
 
-    test_btn = ft.Container(
-        content=ft.Text("🔊", size=24, color="white"),
-        bgcolor="#4CAF50",
-        padding=16,
-        border_radius=20,
-        on_click=lambda e: test_tts(),
-    )
-
     def send_message():
         user_text = input_field.value
         if not user_text:
@@ -234,6 +227,7 @@ def main(page: ft.Page):
         page.update()
         win_w = page.width or page.window_width or 400
 
+        # 用户消息
         chat_display.controls.append(
             ft.Row(
                 controls=[
@@ -250,6 +244,7 @@ def main(page: ft.Page):
         )
         page.update()
 
+        # 正在输入
         typing = ft.Row(
             controls=[
                 ft.Container(
@@ -262,6 +257,7 @@ def main(page: ft.Page):
         chat_display.controls.append(typing)
         page.update()
 
+        # AI 回复
         reply = get_reply(user_text)
 
         chat_display.controls.remove(typing)
@@ -288,11 +284,13 @@ def main(page: ft.Page):
         )
         page.update()
 
+        # 语音合成（静默，不弹窗）
         asyncio.create_task(do_tts(reply))
 
+    # 底部输入栏
     input_row = ft.Container(
         content=ft.Row(
-            controls=[input_field, test_btn, send_btn],
+            controls=[input_field, send_btn],
             spacing=10,
             alignment=ft.MainAxisAlignment.CENTER,
         ),
