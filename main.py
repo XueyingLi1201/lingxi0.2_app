@@ -9,13 +9,14 @@ import tempfile
 import websockets
 from openai import OpenAI
 
-# ---------- 配置 ----------
+# ---------- 从环境变量读取 Key（GitHub Secrets 注入） ----------
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 TTS_API_KEY = os.getenv("TTS_API_KEY", "e9690219-6f03-4a0f-906b-f29ce8bd3c45")
+
 TTS_WS_URL = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
-# ---------- WebSocket 帧定义 ----------
+# ---------- WebSocket 帧 ----------
 EVENT_START_CONNECTION = 1
 EVENT_START_SESSION = 100
 EVENT_TASK_REQUEST = 200
@@ -122,31 +123,18 @@ async def tts_websocket(text: str):
     except Exception as e:
         return None, str(e)
 
-# ---------- Flet UI ----------
+# ---------- UI ----------
 def main(page: ft.Page):
-    # 页面设置 - 全浅色，无红色
     page.title = "灵溪"
     page.theme_mode = "light"
     page.padding = 10
     page.window_width = None
     page.window_height = None
-    page.bgcolor = "#f5f5f5"  # 浅灰
+    page.bgcolor = "#f5f5f5"
 
-    # 音频播放
     audio_player = ft.Audio(src="")
     page.overlay.append(audio_player)
 
-    # ---------- 消息提示（无红色） ----------
-    def show_message(msg: str, is_error=False):
-        page.snack_bar = ft.SnackBar(
-            content=ft.Text(msg, color="white"),
-            bgcolor="#d32f2f" if is_error else "#4CAF50",
-            duration=3000,
-        )
-        page.snack_bar.open = True
-        page.update()
-
-    # ---------- 播放 PCM ----------
     def play_pcm_as_wav(pcm_data: bytes):
         if not pcm_data:
             return
@@ -197,7 +185,7 @@ def main(page: ft.Page):
         content=chat_display,
         padding=10,
         expand=True,
-        bgcolor="#f5f5f5",  # 明确背景色
+        bgcolor="#f5f5f5",
     )
 
     input_field = ft.TextField(
@@ -226,7 +214,6 @@ def main(page: ft.Page):
         page.update()
         win_w = page.width or page.window_width or 400
 
-        # 用户消息
         chat_display.controls.append(
             ft.Row(
                 controls=[
@@ -243,7 +230,6 @@ def main(page: ft.Page):
         )
         page.update()
 
-        # 正在输入
         typing = ft.Row(
             controls=[
                 ft.Container(
@@ -256,7 +242,6 @@ def main(page: ft.Page):
         chat_display.controls.append(typing)
         page.update()
 
-        # AI 回复
         reply = get_reply(user_text)
 
         chat_display.controls.remove(typing)
@@ -283,7 +268,6 @@ def main(page: ft.Page):
         )
         page.update()
 
-        # 语音（静默）
         asyncio.create_task(do_tts(reply))
 
     input_row = ft.Container(
