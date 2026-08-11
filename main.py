@@ -124,30 +124,29 @@ async def tts_websocket(text: str):
 
 # ---------- Flet UI ----------
 def main(page: ft.Page):
-    # ---------- 页面设置 ----------
+    # 页面设置 - 全浅色，无红色
     page.title = "灵溪"
     page.theme_mode = "light"
     page.padding = 10
     page.window_width = None
     page.window_height = None
-    page.bgcolor = "#f0f4f8"
-    page.theme = ft.Theme(color_scheme_seed="#4a90d9")
+    page.bgcolor = "#f5f5f5"  # 浅灰
 
-    # ---------- 音频播放 ----------
+    # 音频播放
     audio_player = ft.Audio(src="")
     page.overlay.append(audio_player)
 
-    # ---------- 消息提示（完全无红色） ----------
-    def show_message(msg: str):
+    # ---------- 消息提示（无红色） ----------
+    def show_message(msg: str, is_error=False):
         page.snack_bar = ft.SnackBar(
             content=ft.Text(msg, color="white"),
-            bgcolor="#4CAF50",  # 统一为绿色
+            bgcolor="#d32f2f" if is_error else "#4CAF50",
             duration=3000,
         )
         page.snack_bar.open = True
         page.update()
 
-    # ---------- 播放 PCM 音频 ----------
+    # ---------- 播放 PCM ----------
     def play_pcm_as_wav(pcm_data: bytes):
         if not pcm_data:
             return
@@ -174,7 +173,7 @@ def main(page: ft.Page):
     async def do_tts(text: str):
         pcm_data, error = await tts_websocket(text)
         if error:
-            print(f"语音合成失败：{error}")
+            print(f"语音失败：{error}")
         else:
             play_pcm_as_wav(pcm_data)
 
@@ -198,7 +197,7 @@ def main(page: ft.Page):
         content=chat_display,
         padding=10,
         expand=True,
-        bgcolor="#f0f4f8",  # 与页面背景一致，彻底消除红色
+        bgcolor="#f5f5f5",  # 明确背景色
     )
 
     input_field = ft.TextField(
@@ -284,10 +283,9 @@ def main(page: ft.Page):
         )
         page.update()
 
-        # 语音合成（静默，不弹窗）
+        # 语音（静默）
         asyncio.create_task(do_tts(reply))
 
-    # 底部输入栏
     input_row = ft.Container(
         content=ft.Row(
             controls=[input_field, send_btn],
@@ -295,7 +293,7 @@ def main(page: ft.Page):
             alignment=ft.MainAxisAlignment.CENTER,
         ),
         padding=10,
-        bgcolor="#f0f4f8",
+        bgcolor="#f5f5f5",
     )
 
     page.add(app_bar, chat_wrapper, input_row)
