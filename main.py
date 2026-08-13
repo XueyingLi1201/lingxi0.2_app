@@ -11,7 +11,14 @@ from openai import OpenAI
 
 # ---------- 从环境变量读取 Key（GitHub Secrets 注入） ----------
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-TTS_API_KEY = os.getenv("TTS_API_KEY", "e9690219-6f03-4a0f-906b-f29ce8bd3c45")
+TTS_API_KEY = os.getenv("TTS_API_KEY", "")
+
+# 如果环境变量为空，直接报错提示
+if not DEEPSEEK_API_KEY:
+    raise ValueError("请在环境变量中设置 DEEPSEEK_API_KEY")
+
+if not TTS_API_KEY:
+    raise ValueError("请在环境变量中设置 TTS_API_KEY")
 
 TTS_WS_URL = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
