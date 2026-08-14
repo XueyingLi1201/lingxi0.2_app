@@ -1,0 +1,5 @@
+flet==0.25.0
+# 注意：若使用 flet>=0.76，Audio 控件已移出核心包，需额外安装 flet-audio
+requests
+openai
+websockets==13.0
